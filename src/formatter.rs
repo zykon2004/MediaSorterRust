@@ -66,7 +66,7 @@ fn remove_year_and_imdb_suffix(title: &str, separator: &str) -> String {
 
     formatted_title.to_string()
 }
-fn extract_season_and_episode_from_series_filename(filename: &str) -> Result<(String, String)> {
+pub fn extract_season_and_episode_from_series_filename(filename: &str) -> Result<(String, String)> {
     match SERIES_SEASON_AND_EPISODE.captures(filename) {
         Some(caps) => Ok((caps["season"].to_string(), caps["episode"].to_string())),
         None => Err(eyre!("Didnt find S01E01 pattern"))
