@@ -1,4 +1,3 @@
-use eyre::{eyre, Result};
 use crate::formatter;
 use std::ffi::OsStr;
 use std::fs::read_dir;
@@ -7,6 +6,7 @@ use std::path::Path;
 const MEDIA_FILE_EXTENSIONS: [&str; 4] = ["mkv", "avi", "mpeg", "mpg"];
 const DOWNLOADED_MEDIA_INDICATORS: [&str; 3] = ["720p", "1080p", "2160p"];
 const PARENT_IDENTIFIER_EXTENSION: &str = ".parent";
+const PREFIX_DELIMINATOR: &str = " | ";
 
 fn is_media_file(file_path: &Path) -> bool {
     MEDIA_FILE_EXTENSIONS
@@ -51,7 +51,7 @@ fn is_series_file(file_path: &Path) -> bool {
 mod tests {
     use super::*;
     use rstest::*;
-    use std::fs::{create_dir, File};
+    use std::fs::File;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -71,10 +71,7 @@ mod tests {
     fn test_is_series_file(#[case] title: &Path, #[case] expected: bool) {
         assert_eq!(is_series_file(title), expected)
     }
-    #[fixture]
-    fn temp_dir() -> TempDir {
-        TempDir::new().expect("Failed to create a temporary directory")
-    }
+
     #[fixture]
     fn parent_series_directory_1<'a>() -> &'a str {
         "Mandalorian 2018"
@@ -83,34 +80,28 @@ mod tests {
     fn parent_series_directory_2<'a>() -> &'a str {
         "Avatar: The Last Airbender tt9018736"
     }
+
     #[fixture]
-    fn series_root_directory<'b>(
-        temp_dir: TempDir,
+    fn series_root_directory(
         parent_series_directory_1: &str,
         parent_series_directory_2: &str,
-    ) -> Result<TempDir> {
-        let series_root_directory: TempDir = TempDir::new_in(temp_dir.path())?;
+    ) -> TempDir {
+        let series_root_directory: TempDir = TempDir::new().unwrap();
+        let mut parent_directory_path: PathBuf;
         for parent_directory in [parent_series_directory_1, parent_series_directory_2].iter() {
-            let directory: PathBuf = series_root_directory.as_ref().join(*parent_directory);
-            File::create(&directory.join(PARENT_IDENTIFIER_EXTENSION))?;
+            parent_directory_path = TempDir::with_prefix_in(
+                [parent_directory, PREFIX_DELIMINATOR].join(""),
+                &series_root_directory,
+            )
+            .unwrap()
+            .into_path();
+            File::create(parent_directory_path.join(PARENT_IDENTIFIER_EXTENSION)).unwrap();
         }
-        Ok(series_root_directory)
-    }
-    #[rstest]
-    fn test_using_temp_dir(series_root_directory: &Result<TempDir>) {
-        // Get the path of the temporary directory
-        let path: PathBuf = series_root_directory.as_ref().unwrap().path().to_path_buf();
-        assert!(path.exists());
-        assert!(path.is_dir());
-
+        series_root_directory
     }
 
     #[rstest]
-    fn another_test_using_temp_dir(temp_dir: TempDir) {
-        // This test will also receive a new temp directory
-        let path: PathBuf = temp_dir.path().to_path_buf();
-        assert!(path.exists());
-
-        // Add your test logic here
+    fn series_root_directory_test(series_root_directory: TempDir) {
+        assert!(&series_root_directory.path().exists())
     }
 }

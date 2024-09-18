@@ -69,16 +69,16 @@ fn remove_year_and_imdb_suffix(title: &str, separator: &str) -> String {
 pub fn extract_season_and_episode_from_series_filename(filename: &str) -> Result<(String, String)> {
     match SERIES_SEASON_AND_EPISODE.captures(filename) {
         Some(caps) => Ok((caps["season"].to_string(), caps["episode"].to_string())),
-        None => Err(eyre!("Didnt find S01E01 pattern"))
+        None => Err(eyre!("Didnt find S01E01 pattern")),
     }
 }
 
 fn format_series_filename_before_rename(filename: &str, title: &str) -> Result<String> {
-    let (season, episode) = match extract_season_and_episode_from_series_filename(&filename) {
+    let (season, episode) = match extract_season_and_episode_from_series_filename(filename) {
         Ok((season, episode)) => (season, episode),
         Err(e) => return Err(e),
     };
-    let mut formatted_title = remove_year_and_imdb_suffix(&title, DEFAULT_TITLE_SEPARATOR);
+    let mut formatted_title = remove_year_and_imdb_suffix(title, DEFAULT_TITLE_SEPARATOR);
     formatted_title = remove_the_prefix(&formatted_title, DEFAULT_TITLE_SEPARATOR);
     let file_suffix = filename
         .rsplit_once(UNIFIED_SEPARATOR)
@@ -95,14 +95,18 @@ mod tests {
     #[case::mismatch_title_and_fileame(
         "The Office tt0386676",
         "The.Mandalorian.S02E02.Chapter.10.1080p.DSNP.WEB-DL.DDP.5.1.Atmos.H.264-PHOENiX.mkv",
-        false,
+        false
     )]
     #[case::matching_title_and_filename_after_removing(
         "Mandalorian 2018",
         "The.Mandalorian.S02E02.Chapter.10.1080p.DSNP.WEB-DL.DDP.5.1.Atmos.H.264-PHOENiX.mkv",
-        true,
+        true
     )]
-    fn e2e_format_series_title_and_filename(#[case] title: &str, #[case] filename: &str, #[case] expected: bool) {
+    fn e2e_format_series_title_and_filename(
+        #[case] title: &str,
+        #[case] filename: &str,
+        #[case] expected: bool,
+    ) {
         let formatted_title = format_series_title_and_file_name(title);
         let formatted_filename = format_series_title_and_file_name(filename);
         assert_eq!(formatted_filename.starts_with(&formatted_title), expected)
@@ -135,7 +139,7 @@ mod tests {
     #[case::avi_file(
         "S.W.A.T.2017.S07E10.1080p_HDTV_;;x265-MiNX[TGx].avi",
         "S.W.A.T 2017",
-        "S.W.A.T - 07x10.avi",
+        "S.W.A.T - 07x10.avi"
     )]
     fn format_before_rename(#[case] filename: &str, #[case] title: &str, #[case] expected: &str) {
         let result = match format_series_filename_before_rename(filename, title) {
