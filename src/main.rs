@@ -1,6 +1,6 @@
-use std::fs::{File, DirBuilder};
-use tempfile::TempDir;
+use std::fs::File;
 use std::io::Write;
+use tempfile::TempDir;
 mod formatter;
 mod media_file;
 

@@ -1,4 +1,5 @@
 use crate::formatter;
+use eyre::Result;
 use std::ffi::OsStr;
 use std::fs::read_dir;
 use std::path::Path;
@@ -73,11 +74,11 @@ mod tests {
     }
 
     #[fixture]
-    fn parent_series_directory_1<'a>() -> &'a str {
+    fn parent_series_directory_1() -> &'static str {
         "Mandalorian 2018"
     }
     #[fixture]
-    fn parent_series_directory_2<'a>() -> &'a str {
+    fn parent_series_directory_2() -> &'static str {
         "Avatar: The Last Airbender tt9018736"
     }
 
@@ -85,23 +86,29 @@ mod tests {
     fn series_root_directory(
         parent_series_directory_1: &str,
         parent_series_directory_2: &str,
-    ) -> TempDir {
-        let series_root_directory: TempDir = TempDir::new().unwrap();
+    ) -> Result<TempDir> {
+        let series_root_directory: TempDir = TempDir::new()?;
         let mut parent_directory_path: PathBuf;
         for parent_directory in [parent_series_directory_1, parent_series_directory_2].iter() {
             parent_directory_path = TempDir::with_prefix_in(
                 [parent_directory, PREFIX_DELIMINATOR].join(""),
                 &series_root_directory,
-            )
-            .unwrap()
+            )?
             .into_path();
-            File::create(parent_directory_path.join(PARENT_IDENTIFIER_EXTENSION)).unwrap();
+            File::create(parent_directory_path.join(PARENT_IDENTIFIER_EXTENSION))?;
         }
-        series_root_directory
+        Ok(series_root_directory)
     }
 
     #[rstest]
-    fn series_root_directory_test(series_root_directory: TempDir) {
-        assert!(&series_root_directory.path().exists())
+    fn series_root_directory_test(series_root_directory: Result<TempDir>) {
+        match series_root_directory {
+            Ok(directory) => {
+                assert!(&directory.path().exists())
+            }
+            Err(err) => {
+                panic!("Fixture raised error")
+            }
+        }
     }
 }
