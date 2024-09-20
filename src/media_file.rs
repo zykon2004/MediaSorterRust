@@ -30,7 +30,7 @@ fn is_downloaded_media_file(file_path: &Path) -> bool {
 }
 
 fn is_downloaded_media_directory(directory: &Path) -> bool {
-    if !directory.is_dir() && is_downloaded(directory) {
+    if !(directory.is_dir() && is_downloaded(directory)) {
         return false;
     }
     for file in read_dir(directory).unwrap() {
@@ -52,6 +52,7 @@ fn is_series_file(file_path: &Path) -> bool {
 mod tests {
     use super::*;
     use rstest::*;
+    use std::fs;
     use std::fs::File;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -74,12 +75,66 @@ mod tests {
     }
 
     #[fixture]
+    fn downloaded_media_directory() -> &'static str {
+        "The.Mandalorian.S02E02.Chapter.10.1080p.WEB-DL.DDP.5.1.Atmos.H.264-PHOENiX"
+    }
+    #[fixture]
+    fn downloaded_app_directory() -> &'static str {
+        "Photoshop CS2"
+    }
+    #[fixture]
+    fn personal_media_directory() -> &'static str {
+        "Wedding Videos"
+    }
+    #[fixture]
     fn parent_series_directory_1() -> &'static str {
         "Mandalorian 2018"
     }
     #[fixture]
     fn parent_series_directory_2() -> &'static str {
         "Avatar: The Last Airbender tt9018736"
+    }
+
+    #[fixture]
+    fn movies_directory() -> Result<TempDir> {
+        let movies_directory: TempDir = TempDir::new()?;
+        Ok(movies_directory)
+    }
+
+    #[fixture]
+    fn downloads_directory(
+        downloaded_media_directory: &str,
+        downloaded_app_directory: &str,
+        personal_media_directory: &str,
+    ) -> Result<TempDir> {
+        let downloads_directory: TempDir = TempDir::new()?;
+        let created_downloaded_media_directory = TempDir::with_prefix_in(
+            [downloaded_media_directory, PREFIX_DELIMINATOR].join(""),
+            &downloads_directory,
+        )?
+        .into_path();
+        File::create(
+            created_downloaded_media_directory
+                .join([downloaded_media_directory, MEDIA_FILE_EXTENSIONS[0]].join(".")),
+        )?;
+        File::create(created_downloaded_media_directory.join("readme.txt"))?;
+
+        let _ = TempDir::with_prefix_in(
+            [downloaded_app_directory, PREFIX_DELIMINATOR].join(""),
+            &downloads_directory,
+        )?
+        .into_path();
+
+        let created_personal_media_directory = TempDir::with_prefix_in(
+            [personal_media_directory, PREFIX_DELIMINATOR].join(""),
+            &downloads_directory,
+        )?
+        .into_path();
+        File::create(
+            created_personal_media_directory
+                .join(["Wedding video", MEDIA_FILE_EXTENSIONS[0]].join(".")),
+        )?;
+        Ok(downloads_directory)
     }
 
     #[fixture]
@@ -101,14 +156,26 @@ mod tests {
     }
 
     #[rstest]
-    fn series_root_directory_test(series_root_directory: Result<TempDir>) {
-        match series_root_directory {
-            Ok(directory) => {
-                assert!(&directory.path().exists())
-            }
-            Err(err) => {
-                panic!("Fixture raised error")
+    #[case::downloaded_file_in_directory(downloaded_media_directory(), true)]
+    #[case::personal_media_is_not_recognied(personal_media_directory(), false)]
+    #[case::downloaded_app_is_not_recognized(downloaded_app_directory(), false)]
+    fn test_is_downloaded_media_directory(
+        downloads_directory: Result<TempDir>,
+        #[case] directory_name: &str,
+        #[case] expected: bool,
+    ) {
+        for entry in fs::read_dir(&downloads_directory.unwrap().path()).unwrap() {
+            if let Ok(entry) = entry {
+                if entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(directory_name)
+                {
+                    assert_eq!(is_downloaded_media_directory(&entry.path()), expected);
+                    return;
+                }
             }
         }
+        panic!("Could not find an expected directory: {}", directory_name)
     }
 }
