@@ -10,9 +10,14 @@ const PARENT_IDENTIFIER_EXTENSION: &str = ".parent";
 const PREFIX_DELIMINATOR: &str = " | ";
 
 fn is_media_file(file_path: &Path) -> bool {
-    MEDIA_FILE_EXTENSIONS
-        .iter()
-        .any(|extension| file_path.extension().unwrap_or(OsStr::new("")) == *extension)
+    MEDIA_FILE_EXTENSIONS.iter().any(|extension| {
+        file_path
+            .extension()
+            .unwrap_or(OsStr::new(""))
+            .to_string_lossy()
+            .starts_with(*extension) // The reason it's starts_with and not EQ is because of how
+                                     // tempfile works. it creates file/folder with a random suffix.
+    })
 }
 
 fn is_downloaded(file_path: &Path) -> bool {
@@ -55,7 +60,7 @@ mod tests {
     use std::fs;
     use std::fs::File;
     use std::path::PathBuf;
-    use tempfile::TempDir;
+    use tempfile::{NamedTempFile, TempDir};
 
     #[rstest]
     #[case::downloaded_file_containing_pattern(
@@ -177,5 +182,14 @@ mod tests {
             }
         }
         panic!("Could not find an expected directory: {}", directory_name)
+    }
+
+    #[rstest]
+    #[case::file_ending_with_media_suffix_containing_media_indicator([downloaded_media_directory(), MEDIA_FILE_EXTENSIONS[0]].join("."), true)]
+    #[case::downloaded_directory_but_not_file(String::from(downloaded_media_directory()), false)]
+    #[case::file_ending_with_media_suffix_without_media_indicator([personal_media_directory(), MEDIA_FILE_EXTENSIONS[0]].join("."), false)]
+    fn test_is_downloaded_media_file(#[case] entry_name: String, #[case] expected: bool) {
+        let entry = NamedTempFile::with_prefix(entry_name).unwrap();
+        assert_eq!(is_downloaded_media_file(&entry.path()), expected)
     }
 }
