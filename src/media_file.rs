@@ -1,6 +1,5 @@
 use crate::formatter;
 use eyre::Result;
-use std::ffi::OsStr;
 use std::fs::read_dir;
 use std::path::Path;
 
@@ -11,23 +10,21 @@ const PREFIX_DELIMINATOR: &str = " | ";
 
 fn is_media_file(file_path: &Path) -> bool {
     MEDIA_FILE_EXTENSIONS.iter().any(|extension| {
-        file_path
-            .extension()
-            .unwrap_or(OsStr::new(""))
-            .to_string_lossy()
-            .starts_with(*extension) // The reason it's starts_with and not EQ is because of how
-                                     // tempfile works. it creates file/folder with a random suffix.
+        match file_path.extension() {
+            // The reason it's starts_with and not EQ is because of how tempfile works. it creates file/folder with a random suffix.
+            Some(ext) => ext.to_string_lossy().starts_with(*extension),
+            None => false,
+        }
     })
 }
 
 fn is_downloaded(file_path: &Path) -> bool {
-    DOWNLOADED_MEDIA_INDICATORS.iter().any(|indicator| {
-        file_path
-            .file_stem()
-            .unwrap_or(OsStr::new(""))
-            .to_string_lossy()
-            .contains(indicator)
-    })
+    DOWNLOADED_MEDIA_INDICATORS
+        .iter()
+        .any(|indicator| match file_path.file_stem() {
+            Some(stem) => stem.to_string_lossy().contains(indicator),
+            None => false,
+        })
 }
 
 fn is_downloaded_media_file(file_path: &Path) -> bool {
@@ -48,10 +45,15 @@ fn is_downloaded_media_directory(directory: &Path) -> bool {
 }
 
 fn is_series_file(file_path: &Path) -> bool {
-    let file_path_string = String::from(file_path.file_stem().unwrap().to_string_lossy());
-
-    is_downloaded_media_file(file_path)
-        && formatter::extract_season_and_episode_from_series_filename(&file_path_string).is_ok()
+    match file_path.file_stem() {
+        Some(stem) => {
+            let file_path_string = String::from(stem.to_string_lossy());
+            is_downloaded_media_file(file_path)
+                && formatter::extract_season_and_episode_from_series_filename(&file_path_string)
+                    .is_ok()
+        }
+        None => false,
+    }
 }
 #[cfg(test)]
 mod tests {
