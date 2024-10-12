@@ -3,6 +3,7 @@ use std::io::Write;
 use tempfile::TempDir;
 mod formatter;
 mod media_file;
+mod parent_directory;
 
 fn main() {
     let tmp_dir = TempDir::new().unwrap();
